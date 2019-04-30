@@ -2,40 +2,9 @@
 #include <sstream>
 #include <cctype>
 #include <iostream>
+#include <regex>
 
-static const int PRECISION = 20;
-
-Monomial::Monomial(std::string term) {
-	int cur = 0;
-	while (!isalpha(term[cur]) or term[cur] == '-') {
-		cur++;
-		if (cur == term.size()) {
-			std::stringstream temp(term.substr(0, cur));
-			temp >> cof;
-			var = "";
-			degree = 0;
-			return;
-		}
-	}
-	if (cur == 0) { // No cof
-		cof = 1;
-	} else {
-		std::stringstream temp(term.substr(0, cur));
-		temp >> cof;
-	}
-	int cofstop = cur;
-
-	while (isalpha(term[cur])) {
-		cur++;
-		if (cur == term.size()) {
-			var = term.substr(cofstop, cur-cofstop);
-			degree = 1;
-			return;
-		}
-	}
-	var = term.substr(cofstop, cur-cofstop);
-	degree = stoi(term.substr(cur+1, term.size()-(cur+1)));
-}
+static const mpf_class PRECISION = 0.000000000000000000001;
 
 int Monomial::getDegree() const {
 	return degree;
@@ -69,7 +38,7 @@ mpf_class Monomial::eval(mpf_class x) const {
 	}
 }
 
-mpz_class Polynomial::round(const mpf_class& f) {
+mpz_class Polynomial::round(const mpf_class& f) const {
 	mpz_class floor(f);
 	mpz_class ceil = floor;
 	if (f > 0) {
@@ -85,36 +54,6 @@ mpz_class Polynomial::round(const mpf_class& f) {
 	}
 }
 
-std::vector<std::string> Polynomial::split(std::string s) {
-	std::vector<std::string> out;
-	int last = 0;
-	for (int i = 0; i < s.size(); i++) {
-		if (s[i] == '+') {
-			out.push_back(s.substr(last, i-last));
-			last = i+1;
-		} else if (s[i] == '-') {
-			out.push_back(s.substr(last, i-last));
-			last = i;
-		}	
-	}
-	if (last != s.size()) {
-		out.push_back(s.substr(last, s.size()-last));
-	}
-	return out;
-}
-
-Polynomial::Polynomial(std::string poly) {
-	std::vector<std::string> tempterms = split(poly);
-	degree = 0;
-	for (int i = 0; i < tempterms.size(); i++) {
-		Monomial toadd(tempterms[i]);
-		terms.push_back(toadd);
-		if (toadd.getDegree() > degree) {
-			degree = toadd.getDegree();
-		}	
-	}
-}
-
 int Polynomial::getDegree() const {
 	return degree;
 }
@@ -126,7 +65,7 @@ void Polynomial::addTerm(Monomial m) {
 }
 
 Polynomial Polynomial::derivative() const {
-	Polynomial deriv("");
+	Polynomial deriv;
 	for (int i = 0; i < terms.size(); i++) {
 		Monomial d = terms[i].derivative();
 		if (d.getCof() != 0) {
@@ -143,7 +82,7 @@ mpf_class Polynomial::eval(mpf_class x) const {
 	return result;
 }
 
-mpf_class Polynomial::root(mpf_class lower, mpf_class upper) {
+mpf_class Polynomial::root(mpf_class lower, mpf_class upper) const {
 	if (eval(lower)*eval(upper) > 0) //No root
 		return upper+1;
 
@@ -157,12 +96,7 @@ mpf_class Polynomial::root(mpf_class lower, mpf_class upper) {
 	mpf_class result = eval(r);
 	mpf_class prev = 0.0;
 
-	mpf_class prec = 10;
-	mpf_pow_ui(prec.get_mpf_t(), prec.get_mpf_t(), PRECISION);
-	mpf_ui_div(prec.get_mpf_t(), 1, prec.get_mpf_t());
-
-
-	while (diff(result, prev) > prec) {
+	while (diff(result, prev) > PRECISION) {
 		if (rising) {
 			if (result < 0) {
 				lower = r;
@@ -188,7 +122,7 @@ mpf_class Polynomial::root(mpf_class lower, mpf_class upper) {
 	return r;
 }
 
-mpf_class Polynomial::diff(const mpf_class& a, const mpf_class& b) {
+mpf_class Polynomial::diff(const mpf_class& a, const mpf_class& b) const {
 	mpf_class temp1, temp2;
 	mpf_abs(temp1.get_mpf_t(), a.get_mpf_t());
 	mpf_abs(temp2.get_mpf_t(), b.get_mpf_t());
@@ -208,7 +142,7 @@ std::ostream& operator<<(std::ostream& os, const Polynomial& p) {
 	return os;
 }
 
-std::vector<mpf_class> allRoots(Polynomial p, mpf_class lower, mpf_class upper) {
+std::vector<mpf_class> allRoots(const Polynomial& p, mpf_class lower, mpf_class upper) {
 	std::vector<mpf_class> roots, points;
 	if (p.getDegree() > 1) {
 		points = allRoots(p.derivative(), lower, upper);
@@ -245,3 +179,32 @@ std::vector<mpf_class> allRoots(Polynomial p, mpf_class lower, mpf_class upper) 
 	}
 	return roots;
 }
+
+Polynomial parsePolynomial(std::string s) {
+	Polynomial out;
+	std::regex splite("([+-]?[^-+]+)");
+	std::regex termparse("([-+][0-9]+)([a-z])\\^*([0-9]+)*|([-+][0-9]+)|([+-])([a-z])\\^*([0-9]+)*");
+	std::sregex_token_iterator rend;
+	std::sregex_token_iterator m(s.begin(), s.end(), splite);
+	for (; m != rend; m++) {
+		std::smatch matches;
+		std::string str = *m;
+		std::regex_search(str, matches, termparse);
+
+		int start = 1;
+		while (matches.str(start) == "") {start++;}
+
+		int cof;
+		if (matches.str(start) == "-")
+			cof = -1;
+		else if (matches.str(start) == "+")
+			cof = 1;
+		else
+			cof = stoi(matches.str(start));
+		std::string var = matches.str(start+1);
+		int deg = (matches.str(start+2) == "" ? 1 : stoi(matches.str(start+2)));
+		out.addTerm(Monomial(cof, var, deg));
+	}
+	return out;
+}
+
