@@ -183,7 +183,7 @@ std::vector<mpf_class> allRoots(const Polynomial& p, mpf_class lower, mpf_class 
 Polynomial parsePolynomial(std::string s) {
 	Polynomial out;
 	std::regex splite("([+-]?[^-+]+)");
-	std::regex termparse("([-+][0-9]+)([a-z])\\^*([0-9]+)*|([-+][0-9]+)|([+-])([a-z])\\^*([0-9]+)*");
+	std::regex termparse("([-+][0-9]+\\.*[[0-9]*)([a-z])\\^*([0-9]+)*|([-+][0-9]+\\.*[[0-9]*)|([+-])([a-z])\\^*([0-9]+)*");
 	std::sregex_token_iterator rend;
 	std::sregex_token_iterator m(s.begin(), s.end(), splite);
 	for (; m != rend; m++) {
@@ -194,13 +194,13 @@ Polynomial parsePolynomial(std::string s) {
 		int start = 1;
 		while (matches.str(start) == "") {start++;}
 
-		int cof;
+		mpf_class cof;
 		if (matches.str(start) == "-")
 			cof = -1;
 		else if (matches.str(start) == "+")
 			cof = 1;
 		else
-			cof = stoi(matches.str(start));
+			cof = matches.str(start)[0] != '+' ? matches.str(start) : matches.str(start).substr(1);
 		std::string var = matches.str(start+1);
 		int deg = (matches.str(start+2) == "" ? 1 : stoi(matches.str(start+2)));
 		out.addTerm(Monomial(cof, var, deg));
