@@ -1,16 +1,16 @@
 CC=clang++
+CFALGS=-Wall -std=c++17
+LDFLAGS= -lgmpxx -lgmp
 HEADERS = polynomial.h
+OBJECTS = main.o polynomial.o
 
 defualt: polyroot
 
-polynomial.o: polynomial.cpp $(HEADERS)
-	$(CC) -c polynomial.cpp -std=c++17 -o polynomial.o
+%.o : %.cpp $(HEADERS)
+	$(CC) -c $(CFLAGS) $< 
 
-main.o: main.cpp
-	$(CC) -c main.cpp -std=c++17 -o main.o
-
-polyroot: main.o polynomial.o
-	$(CC) main.o polynomial.o -std=c++17 -lgmpxx -lgmp -o polyroot
+polyroot: $(OBJECTS)
+	$(CC) $(CFALGS) $(OBJECTS) $(LDFLAGS) -o $@
 
 clean:
 	rm -f *.o

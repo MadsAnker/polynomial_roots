@@ -123,12 +123,10 @@ mpf_class Polynomial::root(mpf_class lower, mpf_class upper) const {
 }
 
 mpf_class Polynomial::diff(const mpf_class& a, const mpf_class& b) const {
-	mpf_class temp1, temp2;
-	mpf_abs(temp1.get_mpf_t(), a.get_mpf_t());
-	mpf_abs(temp2.get_mpf_t(), b.get_mpf_t());
-	temp1 -= temp2;
-	mpf_abs(temp2.get_mpf_t(), temp1.get_mpf_t());
-	return temp2;
+	mpf_class temp;
+	temp = a-b;
+	mpf_abs(temp.get_mpf_t(), temp.get_mpf_t());
+	return temp;
 }
 
 std::ostream& operator<<(std::ostream& os, const Polynomial& p) {
